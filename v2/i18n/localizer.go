@@ -59,6 +59,9 @@ type LocalizeConfig struct {
 
 	// Funcs is used to extend the Go template engine's built in functions
 	Funcs template.FuncMap
+
+	// Prevent template execution
+	PreventTemplateExecution bool
 }
 
 type invalidPluralCountErr struct {
@@ -152,17 +155,21 @@ func (l *Localizer) LocalizeWithTag(lc *LocalizeConfig) (string, language.Tag, e
 	}
 
 	pluralForm := l.pluralForm(tag, operands)
-	msg, err2 := template.Execute(pluralForm, templateData, lc.Funcs)
-	if err2 != nil {
-		if err == nil {
-			err = err2
-		}
+	msg := template.Message.Other
+	if !lc.PreventTemplateExecution {
+		var err2 error
+		msg, err2 = template.Execute(pluralForm, templateData, lc.Funcs)
+		if err2 != nil {
+			if err == nil {
+				err = err2
+			}
 
-		// Attempt to fallback to "Other" pluralization in case translations are incomplete.
-		if pluralForm != plural.Other {
-			msg2, err3 := template.Execute(plural.Other, templateData, lc.Funcs)
-			if err3 == nil {
-				msg = msg2
+			// Attempt to fallback to "Other" pluralization in case translations are incomplete.
+			if pluralForm != plural.Other {
+				msg2, err3 := template.Execute(plural.Other, templateData, lc.Funcs)
+				if err3 == nil {
+					msg = msg2
+				}
 			}
 		}
 	}
